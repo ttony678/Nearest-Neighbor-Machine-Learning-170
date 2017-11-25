@@ -55,6 +55,11 @@ void readFile(string filename) {
     ifstream file;
     file.open(filename);
 
+    if (!file.is_open()) {
+        cout << "Error opening file. Closing program!" << endl;
+        exit(1);
+    }
+
     while (getline(file, line)) {
         stringstream ss(line);
         while (ss >> d) {
@@ -78,22 +83,8 @@ void readFile(string filename) {
     for (unsigned i = 0; i < rawData.size(); i++) {
         classifications.push_back(rawData.at(i).at(0));
     }
-}
 
-void printVecVector(vector< vector<double> > vec) {
-    for (unsigned i = 0; i < vec.size(); i++) {
-        for (unsigned j = 0; j < vec.at(i).size(); j++) {
-            cout << vec.at(i).at(j) << " ";
-        }
-        cout << endl;
-    }
-}
-
-void printVector(vector<double> vec) {
-    for (unsigned i = 0; i < vec.size(); i++) {
-        cout << vec.at(i) << " ";
-    }
-    cout << endl;
+    file.close();
 }
 
 double leaveOneOutCrossValidation() {
@@ -251,12 +242,26 @@ void printSet(const vector< double> &currentFeatureSetIDS) {
         if (j != currentFeatureSetIDS.size() -1)
             cout << currentFeatureSetIDS.at(j)+1 << ",";
         else 
-            cout << currentFeatureSetIDS.at(j)+1 << "} ";
+            cout << currentFeatureSetIDS.at(j)+1;
+    }
+    cout << "} ";
+}
+
+void printVecVector(vector< vector<double> > vec) {
+    for (unsigned i = 0; i < vec.size(); i++) {
+        for (unsigned j = 0; j < vec.at(i).size(); j++) {
+            cout << vec.at(i).at(j) << " ";
+        }
+        cout << endl;
     }
 }
 
-
-
+void printVector(vector<double> vec) {
+    for (unsigned i = 0; i < vec.size(); i++) {
+        cout << vec.at(i) << " ";
+    }
+    cout << endl;
+}
 
 
 
