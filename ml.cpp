@@ -13,11 +13,14 @@ using namespace std;
 // Prototypes
 string welcome();
 void readFile(string);
+void pickAlgorithm();
 void forwardFeatureSearch();
 void backwardEliminationSearch();
+void printDataInfo();
 void printSet(const vector< double> &);
 double leaveOneOutCrossValidation(const vector< vector<double> > &); 
 double getDistance (const vector<double> &, const vector<double> &); 
+void normalizeData(); 
 
 // Global Variables
 vector< vector<double> > rawData;
@@ -28,10 +31,7 @@ vector<double> classifications;
 int main() {
     string filename = welcome();
     readFile(filename);
-
-    forwardFeatureSearch();
-    // backwardEliminationSearch();
-
+    pickAlgorithm();
     return 0;
 }
 
@@ -44,6 +44,7 @@ string welcome() {
     getline(cin, filename);
     return filename;
 }
+
 
 // https://stackoverflow.com/questions/1894886/
 // parsing-a-comma-delimited-stdstring
@@ -69,6 +70,7 @@ void readFile(string filename) {
         rawData.push_back(data);
         data.clear();
     }
+    file.close();
 
     // Populating feature vector vector
     for (unsigned i = 1; i < rawData.at(0).size(); i++) { 
@@ -84,8 +86,65 @@ void readFile(string filename) {
     for (unsigned i = 0; i < rawData.size(); i++) {
         classifications.push_back(rawData.at(i).at(0));
     }
+}
 
-    file.close();
+void pickAlgorithm() {
+    char algorithm;
+    cout << "\nType the number of the algorithm you want to run.\n\n";
+    cout << "\t1) Forward Selection\n";
+    cout << "\t2) Backward Elimination\n";
+    cout << "\t3) Luis's Special Algorithm\n\n\t\t\t\t";
+    cin >> algorithm;
+    cin.ignore();
+    switch(algorithm) {
+        case '1':
+            printDataInfo();
+            forwardFeatureSearch();
+            break;
+        case '2':
+            printDataInfo();
+            backwardEliminationSearch();
+            break;
+        case '3':
+            printDataInfo();
+            break;
+        default:
+            cout << "\nInvalid Choice. Please try again.\n";
+            pickAlgorithm();
+            break;
+    }
+}
+
+// http://www.techcrashcourse.com/2017/01/
+// cpp-program-to-calculate-standard-deviation.html
+void normalizeData() {
+    double sum;
+    double deviation;
+    double mean;
+    unsigned size = features.size();
+    unsigned instanceSize = features.at(0).size();
+
+    for (unsigned i = 0; i < size; i++ ) {
+        sum = 0;
+        deviation = 0;
+
+        for (unsigned j = 0; j < instanceSize; j++) {
+            sum += features.at(i).at(j);
+        }
+
+        mean = sum / instanceSize;
+
+        for (unsigned j = 0; j < instanceSize; j++) {
+            deviation += pow(features.at(i).at(j) - mean, 2.0);
+        }
+
+        deviation = sqrt(deviation/size);
+
+        for (unsigned j = 0; j < instanceSize; j++) {
+            double temp = features.at(i).at(j);
+            features.at(i).at(j) = (temp - mean) / deviation;
+        }
+    }
 }
 
 double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
@@ -130,8 +189,8 @@ double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
         testPoint.clear();
     }
 
-    percentage = correctClassification/static_cast<double>(size);
-    return percentage * 100;
+    percentage = correctClassification / static_cast<double>(size);
+    return percentage * 100.00;
 }
 
 double getDistance (const vector<double> &test, const vector<double> &set) {
@@ -255,9 +314,12 @@ void backwardEliminationSearch() {
 
                 cout << "\tUsing features(s) ";
                 printSet(currentFeatureSetIDS);
-                cout << "accuracy is " << accuracy << " %" << endl;
+                cout << "accuracy is " << accuracy << "%" << endl;
 
-                if (accuracy > bestNewAccuracy) {
+                if (accuracy > bestNewAccuracy || 
+                  (accuracy == bestNewAccuracy && 
+                  currentFeatureSet.size() < bestNewFeatures.size())) {
+
                     bestNewAccuracy = accuracy;
                     bestNewFeatures.assign(currentFeatureSetIDS.begin(), 
                                            currentFeatureSetIDS.end());
@@ -289,6 +351,7 @@ void backwardEliminationSearch() {
     cout << "Which has an accuracy of " << bestTotalAccuracy << "%" << endl;
 }
 
+
 void printSet(const vector< double> &currentFeatureSetIDS) {
     cout << "{";
     for (unsigned j = 0; j < currentFeatureSetIDS.size(); j++) {
@@ -299,4 +362,13 @@ void printSet(const vector< double> &currentFeatureSetIDS) {
     }
     cout << "} ";
 }
+
+void printDataInfo() {
+    cout << "This dataset has " << features.size() << " features (not including ";
+    cout << "the class attribute), with " << features.at(0).size() << " instances.\n\n";
+    cout << "Please wait while I normalize the data... ";
+    normalizeData(); 
+    cout << "Done!\n\n";
+}
+
 
