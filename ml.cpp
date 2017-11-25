@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -5,18 +6,18 @@
 #include <string>
 #include <sstream>
 #include <ctime>
-#include <unordered_map>
+#include <cmath>
+#include <climits>
 using namespace std;
 
 // Prototypes
 string welcome();
 void readFile(string);
-double leaveOneOutCrossValidation(); 
 void forwardFeatureSearch();
 void backwardEliminationSearch();
 void printSet(const vector< double> &);
-void printVecVector(vector< vector<double> >);
-void printVector(vector<double>);
+double leaveOneOutCrossValidation(const vector< vector<double> > &); 
+double getDistance (const vector<double> &, const vector<double> &); 
 
 // Global Variables
 vector< vector<double> > rawData;
@@ -28,8 +29,8 @@ int main() {
     string filename = welcome();
     readFile(filename);
 
-    // forwardFeatureSearch();
-    backwardEliminationSearch();
+    forwardFeatureSearch();
+    // backwardEliminationSearch();
 
     return 0;
 }
@@ -87,10 +88,61 @@ void readFile(string filename) {
     file.close();
 }
 
-double leaveOneOutCrossValidation() {
-    double accuracy;
-    accuracy = rand()%101+1;
-    return accuracy;
+double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
+    double distance;
+    double percentage;
+    int nearestNeighbor;
+    int correctClassification = 0;
+    unsigned size = currentSet.at(0).size();
+    unsigned totalFeatures = currentSet.size();
+
+    for (unsigned i = 0; i < size; i++ ) {
+        double minDistance = UINT_MAX;
+        vector<double> testPoint;
+
+        // Creating a test point
+        for (unsigned j = 0; j < totalFeatures; j++) {
+            testPoint.push_back(currentSet.at(j).at(i));
+        }
+
+        // Creating new points from current set. Will use these points to get
+        // Euclidian Distance from the created testPoint.
+        for (unsigned j = 0; j < size; j++) {
+            if (j != i) {
+                vector<double> point; 
+                for (unsigned k = 0; k < totalFeatures; k++) {
+                    point.push_back(currentSet.at(k).at(j));
+                }
+
+                distance = getDistance(testPoint, point);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestNeighbor = j;
+                }
+            }
+        }
+
+        // If test point's closest neighbor is of the same class, increment
+        // number of correct classifications.
+        if (classifications.at(i) == classifications.at(nearestNeighbor)) {
+            correctClassification++;
+        }
+        testPoint.clear();
+    }
+
+    percentage = correctClassification/static_cast<double>(size);
+    return percentage * 100;
+}
+
+double getDistance (const vector<double> &test, const vector<double> &set) {
+    double total = 0;
+    for (unsigned i = 0; i < test.size(); i++) {
+        double temp = test.at(i) - set.at(i);
+        temp = pow(temp, 2.0);
+        total += temp;
+    }
+    total = sqrt(total);
+    return total;
 }
 
 void forwardFeatureSearch() { 
@@ -109,11 +161,11 @@ void forwardFeatureSearch() {
             if (!addedFeatures[j]) {
                 currentFeatureSet.push_back(features.at(j));
                 currentFeatureSetIDS.push_back(j);
-                double accuracy = leaveOneOutCrossValidation();
+                double accuracy = leaveOneOutCrossValidation(currentFeatureSet);
 
                 cout << "\tUsing features(s) ";
                 printSet(currentFeatureSetIDS);
-                cout << "accuracy is " << accuracy << " %" << endl;
+                cout << "accuracy is " << accuracy << "%" << endl;
 
                 if (accuracy > bestNewAccuracy) {
                     bestNewAccuracy = accuracy;
@@ -164,11 +216,11 @@ void backwardEliminationSearch() {
         currentFeatureSetIDS.push_back(i);
     }
 
-    accuracy = leaveOneOutCrossValidation();
+    accuracy = leaveOneOutCrossValidation(currentFeatureSet);
 
     cout << "\tUsing features(s) ";
     printSet(currentFeatureSetIDS);
-    cout << "accuracy is " << accuracy << " %" << endl;
+    cout << "accuracy is " << accuracy << "%" << endl;
 
     if (accuracy > bestTotalAccuracy) {
         bestTotalAccuracy = accuracy;
@@ -198,7 +250,8 @@ void backwardEliminationSearch() {
                         currentFeatureSetIDS.push_back(k);
                     }
                 }
-                double accuracy = leaveOneOutCrossValidation();
+
+                accuracy = leaveOneOutCrossValidation(currentFeatureSet);
 
                 cout << "\tUsing features(s) ";
                 printSet(currentFeatureSetIDS);
@@ -246,22 +299,4 @@ void printSet(const vector< double> &currentFeatureSetIDS) {
     }
     cout << "} ";
 }
-
-void printVecVector(vector< vector<double> > vec) {
-    for (unsigned i = 0; i < vec.size(); i++) {
-        for (unsigned j = 0; j < vec.at(i).size(); j++) {
-            cout << vec.at(i).at(j) << " ";
-        }
-        cout << endl;
-    }
-}
-
-void printVector(vector<double> vec) {
-    for (unsigned i = 0; i < vec.size(); i++) {
-        cout << vec.at(i) << " ";
-    }
-    cout << endl;
-}
-
-
 
