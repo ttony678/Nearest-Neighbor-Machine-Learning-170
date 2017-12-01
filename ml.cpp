@@ -230,7 +230,7 @@ void forwardFeatureSearch() {
         
         for (unsigned j = 0; j < features.size(); j++) {
             if (!addedFeatures[masterFeatureIDS[j]]) {
-                currentFeatureSet.push_back(features.at(j));
+                currentFeatureSet.push_back(features.at(masterFeatureIDS[j]));
                 currentFeatureSetIDS.push_back(masterFeatureIDS[j]);
                 double accuracy = leaveOneOutCrossValidation(currentFeatureSet);
 
@@ -367,22 +367,16 @@ void backwardEliminationSearch() {
 }
 
 void shuffleData() {
-    unordered_map<int, bool> table;
-    vector< vector<double > > vecVecTemp;
-    vecVecTemp.push_back(features.at(0));
-    vecVecTemp.push_back(features.at(1));
-    vecVecTemp.push_back(features.at(2));
-    for (unsigned i = 3; i < features.size(); i++) {
-        vecVecTemp.push_back(features.at(i));
-    }
-    features.swap(vecVecTemp);
-
+    unordered_map<double, bool> tracker;
     vector<double> idTemp;
-    idTemp.push_back(masterFeatureIDS.at(0));
-    idTemp.push_back(masterFeatureIDS.at(1));
-    idTemp.push_back(masterFeatureIDS.at(2));
-    for (unsigned i = 3; i < masterFeatureIDS.size(); i++) {
-        idTemp.push_back(masterFeatureIDS.at(i));
+    unsigned size = masterFeatureIDS.size();
+
+    while (idTemp.size() < size) {
+        int rNum = rand() % size;
+        if (!tracker[rNum]) {
+            idTemp.push_back(masterFeatureIDS.at(rNum)); 
+            tracker[rNum] = true;
+        }
     }
     masterFeatureIDS.swap(idTemp);
 }
@@ -406,7 +400,7 @@ void printDataInfo() {
     cout << "This dataset has " << features.size() << " features (not including ";
     cout << "the class attribute), with " << features.at(0).size() << " instances.\n\n";
     cout << "Please wait while I normalize the data... ";
-    normalizeData(); 
+    // normalizeData(); 
     cout << "Done!\n\n";
 }
 
