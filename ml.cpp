@@ -14,21 +14,25 @@ using namespace std;
 string welcome();
 void readFile(string);
 void pickAlgorithm();
+void normalizeData(); 
 void forwardFeatureSearch();
 void backwardEliminationSearch();
 void printDataInfo();
+void shuffleData();
+void seedTime();
 void printSet(const vector< double> &);
 double leaveOneOutCrossValidation(const vector< vector<double> > &); 
 double getDistance (const vector<double> &, const vector<double> &); 
-void normalizeData(); 
 
 // Global Variables
 vector< vector<double> > rawData;
 vector< vector<double> > features;
 vector<double> classifications;
+vector<double> masterFeatureIDS;
 
 // Beginning
 int main() {
+    seedTime();
     string filename = welcome();
     readFile(filename);
     pickAlgorithm();
@@ -44,7 +48,6 @@ string welcome() {
     getline(cin, filename);
     return filename;
 }
-
 
 // https://stackoverflow.com/questions/1894886/
 // parsing-a-comma-delimited-stdstring
@@ -82,6 +85,13 @@ void readFile(string filename) {
         featureColumn.clear();
     }
 
+    // Populating master feature IDs. Initially gives each feature ID in
+    // ascending order from 0 to n-1. This is useful because eventually I will
+    // shuffle the data around but need to keep track of the features. 
+    for (unsigned i = 0; i < features.size(); i++) {
+        masterFeatureIDS.push_back(i);
+    }
+
     // Populating parallel classificationss vector
     for (unsigned i = 0; i < rawData.size(); i++) {
         classifications.push_back(rawData.at(i).at(0));
@@ -99,6 +109,7 @@ void pickAlgorithm() {
     switch(algorithm) {
         case '1':
             printDataInfo();
+            shuffleData();
             forwardFeatureSearch();
             break;
         case '2':
@@ -107,6 +118,7 @@ void pickAlgorithm() {
             break;
         case '3':
             printDataInfo();
+            cout << "Hello: " << rand() % features.size() << endl;
             break;
         default:
             cout << "\nInvalid Choice. Please try again.\n";
@@ -152,10 +164,10 @@ double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
     double percentage;
     int nearestNeighbor;
     int correctClassification = 0;
-    unsigned size = currentSet.at(0).size();
+    unsigned instanceSize = currentSet.at(0).size();
     unsigned totalFeatures = currentSet.size();
 
-    for (unsigned i = 0; i < size; i++ ) {
+    for (unsigned i = 0; i < instanceSize; i++ ) {
         double minDistance = UINT_MAX;
         vector<double> testPoint;
 
@@ -166,7 +178,7 @@ double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
 
         // Creating new points from current set. Will use these points to get
         // Euclidian Distance from the created testPoint.
-        for (unsigned j = 0; j < size; j++) {
+        for (unsigned j = 0; j < instanceSize; j++) {
             if (j != i) {
                 vector<double> point; 
                 for (unsigned k = 0; k < totalFeatures; k++) {
@@ -189,14 +201,14 @@ double leaveOneOutCrossValidation(const vector< vector<double> > &currentSet) {
         testPoint.clear();
     }
 
-    percentage = correctClassification / static_cast<double>(size);
+    percentage = correctClassification / static_cast<double>(instanceSize);
     return percentage * 100.00;
 }
 
-double getDistance (const vector<double> &test, const vector<double> &set) {
+double getDistance (const vector<double> &test, const vector<double> &training) {
     double total = 0;
     for (unsigned i = 0; i < test.size(); i++) {
-        double temp = test.at(i) - set.at(i);
+        double temp = test.at(i) - training.at(i);
         temp = pow(temp, 2.0);
         total += temp;
     }
@@ -211,24 +223,27 @@ void forwardFeatureSearch() {
     vector<double> bestFeatures;
     double bestTotalAccuracy = 0;
 
-    cout << endl << "Beginning search" << endl << endl;
+    cout << "Beginning search" << endl << endl;
     for (unsigned i = 0; i < features.size(); i++) {
         int featureID = 0;
         double bestNewAccuracy = 0;
         
         for (unsigned j = 0; j < features.size(); j++) {
-            if (!addedFeatures[j]) {
+            if (!addedFeatures[masterFeatureIDS[j]]) {
                 currentFeatureSet.push_back(features.at(j));
-                currentFeatureSetIDS.push_back(j);
+                currentFeatureSetIDS.push_back(masterFeatureIDS[j]);
                 double accuracy = leaveOneOutCrossValidation(currentFeatureSet);
 
                 cout << "\tUsing features(s) ";
                 printSet(currentFeatureSetIDS);
                 cout << "accuracy is " << accuracy << "%" << endl;
 
-                if (accuracy > bestNewAccuracy) {
+                if (accuracy > bestNewAccuracy || 
+                  (accuracy == bestNewAccuracy && 
+                  currentFeatureSetIDS.size() < bestFeatures.size())) {
+
                     bestNewAccuracy = accuracy;
-                    featureID = j;
+                    featureID = masterFeatureIDS[j];
                 }
                 currentFeatureSet.pop_back();
                 currentFeatureSetIDS.pop_back();
@@ -298,15 +313,15 @@ void backwardEliminationSearch() {
         bestNewAccuracy = 0;
 
         for (unsigned j = 0; j < features.size(); j++) {
-            if (!removedFeatures[j]) {
+            if (!removedFeatures[masterFeatureIDS[j]]) {
 
                 // If feature j is not among the removed features and not the current 
                 // feature to be removed, rebuild current set, then run k-fold on 
                 // the current set
                 for (unsigned k = 0; k < features.size(); k++) {
                     if (!removedFeatures[k] && k != j) {
-                        currentFeatureSet.push_back(features.at(k));
-                        currentFeatureSetIDS.push_back(k);
+                        currentFeatureSet.push_back(features.at(masterFeatureIDS[k]));
+                        currentFeatureSetIDS.push_back(masterFeatureIDS[k]);
                     }
                 }
 
@@ -318,12 +333,12 @@ void backwardEliminationSearch() {
 
                 if (accuracy > bestNewAccuracy || 
                   (accuracy == bestNewAccuracy && 
-                  currentFeatureSet.size() < bestNewFeatures.size())) {
+                  currentFeatureSetIDS.size() < bestNewFeatures.size())) {
 
                     bestNewAccuracy = accuracy;
                     bestNewFeatures.assign(currentFeatureSetIDS.begin(), 
                                            currentFeatureSetIDS.end());
-                    featureID = j;
+                    featureID = masterFeatureIDS[j];
                 }
             }
             currentFeatureSet.clear();
@@ -351,6 +366,30 @@ void backwardEliminationSearch() {
     cout << "Which has an accuracy of " << bestTotalAccuracy << "%" << endl;
 }
 
+void shuffleData() {
+    unordered_map<int, bool> table;
+    vector< vector<double > > vecVecTemp;
+    vecVecTemp.push_back(features.at(0));
+    vecVecTemp.push_back(features.at(1));
+    vecVecTemp.push_back(features.at(2));
+    for (unsigned i = 3; i < features.size(); i++) {
+        vecVecTemp.push_back(features.at(i));
+    }
+    features.swap(vecVecTemp);
+
+    vector<double> idTemp;
+    idTemp.push_back(masterFeatureIDS.at(0));
+    idTemp.push_back(masterFeatureIDS.at(1));
+    idTemp.push_back(masterFeatureIDS.at(2));
+    for (unsigned i = 3; i < masterFeatureIDS.size(); i++) {
+        idTemp.push_back(masterFeatureIDS.at(i));
+    }
+    masterFeatureIDS.swap(idTemp);
+}
+
+void seedTime() {
+    srand(time(0));
+}
 
 void printSet(const vector< double> &currentFeatureSetIDS) {
     cout << "{";
