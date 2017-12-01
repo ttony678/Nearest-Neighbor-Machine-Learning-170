@@ -15,7 +15,7 @@ string welcome();
 void readFile(string);
 void pickAlgorithm();
 void normalizeData(); 
-void forwardFeatureSearch();
+void forwardFeatureSearch(bool);
 void backwardEliminationSearch();
 void printDataInfo();
 void shuffleData();
@@ -27,6 +27,7 @@ double getDistance (const vector<double> &, const vector<double> &);
 // Global Variables
 vector< vector<double> > rawData;
 vector< vector<double> > features;
+vector< vector<double> > resultingFeatures; // Used for special algorithm
 vector<double> classifications;
 vector<double> masterFeatureIDS;
 
@@ -99,6 +100,7 @@ void readFile(string filename) {
 }
 
 void pickAlgorithm() {
+    unsigned limit;
     char algorithm;
     cout << "\nType the number of the algorithm you want to run.\n\n";
     cout << "\t1) Forward Selection\n";
@@ -109,8 +111,8 @@ void pickAlgorithm() {
     switch(algorithm) {
         case '1':
             printDataInfo();
-            shuffleData();
-            forwardFeatureSearch();
+            forwardFeatureSearch(true);     // Passing in true prints to std output 
+                                            // according to the guidelines GUI.
             break;
         case '2':
             printDataInfo();
@@ -118,7 +120,20 @@ void pickAlgorithm() {
             break;
         case '3':
             printDataInfo();
-            cout << "Hello: " << rand() % features.size() << endl;
+            limit = 2 * log2(features.size());
+            cout << "Beginning Search" << endl << endl;
+            for (unsigned i = 0; i <= limit; i++) {
+                shuffleData();
+                forwardFeatureSearch(false);
+                printSet(resultingFeatures.at(i));
+                cout << endl;
+            }
+
+            // for (unsigned i = 0; i < resultingFeatures.size(); i++) {
+            //     printSet(resultingFeatures.at(i));
+            //     cout << endl;
+            // }
+            
             break;
         default:
             cout << "\nInvalid Choice. Please try again.\n";
@@ -216,14 +231,17 @@ double getDistance (const vector<double> &test, const vector<double> &training) 
     return total;
 }
 
-void forwardFeatureSearch() { 
+void forwardFeatureSearch(bool toPrint) { 
     vector< vector<double> > currentFeatureSet; // Initializing empty set
     unordered_map<int, bool> addedFeatures;     // To keep track of added features
     vector<double> currentFeatureSetIDS;        // Keeps track of each feature index
     vector<double> bestFeatures;
     double bestTotalAccuracy = 0;
 
-    cout << "Beginning search" << endl << endl;
+    if (toPrint) {
+        cout << "Beginning search" << endl << endl;
+    }
+
     for (unsigned i = 0; i < features.size(); i++) {
         int featureID = 0;
         double bestNewAccuracy = 0;
@@ -233,10 +251,12 @@ void forwardFeatureSearch() {
                 currentFeatureSet.push_back(features.at(masterFeatureIDS[j]));
                 currentFeatureSetIDS.push_back(masterFeatureIDS[j]);
                 double accuracy = leaveOneOutCrossValidation(currentFeatureSet);
-
-                cout << "\tUsing features(s) ";
-                printSet(currentFeatureSetIDS);
-                cout << "accuracy is " << accuracy << "%" << endl;
+                
+                if (toPrint) {
+                    cout << "\tUsing features(s) ";
+                    printSet(currentFeatureSetIDS);
+                    cout << "accuracy is " << accuracy << "%" << endl;
+                }
 
                 if (accuracy > bestNewAccuracy || 
                   (accuracy == bestNewAccuracy && 
@@ -258,17 +278,25 @@ void forwardFeatureSearch() {
             bestFeatures = currentFeatureSetIDS;
         }
         else {
-            cout << endl << "(Warning, Accuracy has decreased! Continuing search ";
-            cout << "in case of local maxima)";
+            if (toPrint) {
+                cout << endl << "(Warning, Accuracy has decreased! Continuing search ";
+                cout << "in case of local maxima)";
+            }
         }
 
-        cout << endl << "Feature set ";
-        printSet(currentFeatureSetIDS);
-        cout << "was best, accuracy is " << bestNewAccuracy << "%" << endl << endl;
+        if (toPrint) {
+            cout << endl << "Feature set ";
+            printSet(currentFeatureSetIDS);
+            cout << "was best, accuracy is " << bestNewAccuracy << "%" << endl << endl;
+        }
     }
-    cout << "Finished search! The best feature subset is ";
-    printSet(bestFeatures);
-    cout << "which has an accuracy of " << bestTotalAccuracy << "%" << endl;
+    
+    if (toPrint) {
+        cout << "Finished search! The best feature subset is ";
+        printSet(bestFeatures);
+        cout << "which has an accuracy of " << bestTotalAccuracy << "%" << endl;
+    }
+    resultingFeatures.push_back(bestFeatures);
 }
 
 void backwardEliminationSearch() {
