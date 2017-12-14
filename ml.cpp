@@ -15,23 +15,26 @@ string welcome();
 void readFile(string);
 void pickAlgorithm();
 void normalizeData(); 
-void forwardFeatureSearch(bool);
+void forwardFeatureSearch(bool);            // If true, prints extra data. Else runs algorithm.
 void backwardEliminationSearch();
+void specialAlgorithm();
+void randomDeletionOfInstance();
 void printDataInfo();
 void shuffleData();
 void seedTime();
-void printSet(const vector< double> &);
-double leaveOneOutCrossValidation(const vector< vector<double> > &); 
-double getDistance (const vector<double> &, const vector<double> &); 
+void printSet(const vector< double> &);     // Pretty prints vector in format: {_,_,_}
+double leaveOneOutCrossValidation(const vector< vector<double> > &);    // K-fold variation 
+double getDistance (const vector<double> &, const vector<double> &);    // Euclidian Distance 
 
 // Global Variables
-vector< vector<double> > rawData;
-vector< vector<double> > features;
-vector< vector<double> > resultingFeatures; // Used for special algorithm
-vector<double> classifications;
-vector<double> masterFeatureIDS;
+vector< vector<double> > rawData;           // 2-D matrix of data read in from file.
+vector< vector<double> > features;          // 2-D matrix of feature data from file.
+vector< vector<double> > resultingFeatures; // Used for special algorithm.
+vector<double> classifications;             // Classification data from file.
+vector<double> masterFeatureIDS;            // Enumerating each feature.
+vector<double> resultingAccuracies;         // Used for special algorithm.
 
-// Beginning
+// Beginning.
 int main() {
     seedTime();
     string filename = welcome();
@@ -66,6 +69,7 @@ void readFile(string filename) {
         exit(1);
     }
 
+    // Populating rawData with info from file
     while (getline(file, line)) {
         stringstream ss(line);
         while (ss >> d) {
@@ -100,7 +104,6 @@ void readFile(string filename) {
 }
 
 void pickAlgorithm() {
-    unsigned limit;
     char algorithm;
     cout << "\nType the number of the algorithm you want to run.\n\n";
     cout << "\t1) Forward Selection\n";
@@ -120,20 +123,7 @@ void pickAlgorithm() {
             break;
         case '3':
             printDataInfo();
-            limit = 2 * log2(features.size());
-            cout << "Beginning Search" << endl << endl;
-            for (unsigned i = 0; i <= limit; i++) {
-                shuffleData();
-                forwardFeatureSearch(false);
-                printSet(resultingFeatures.at(i));
-                cout << endl;
-            }
-
-            // for (unsigned i = 0; i < resultingFeatures.size(); i++) {
-            //     printSet(resultingFeatures.at(i));
-            //     cout << endl;
-            // }
-            
+            specialAlgorithm();
             break;
         default:
             cout << "\nInvalid Choice. Please try again.\n";
@@ -247,6 +237,7 @@ void forwardFeatureSearch(bool toPrint) {
         double bestNewAccuracy = 0;
         
         for (unsigned j = 0; j < features.size(); j++) {
+            // Only add feature if hasn't already been added to main set
             if (!addedFeatures[masterFeatureIDS[j]]) {
                 currentFeatureSet.push_back(features.at(masterFeatureIDS[j]));
                 currentFeatureSetIDS.push_back(masterFeatureIDS[j]);
@@ -258,10 +249,7 @@ void forwardFeatureSearch(bool toPrint) {
                     cout << "accuracy is " << accuracy << "%" << endl;
                 }
 
-                if (accuracy > bestNewAccuracy || 
-                  (accuracy == bestNewAccuracy && 
-                  currentFeatureSetIDS.size() < bestFeatures.size())) {
-
+                if (accuracy > bestNewAccuracy) { 
                     bestNewAccuracy = accuracy;
                     featureID = masterFeatureIDS[j];
                 }
@@ -269,6 +257,8 @@ void forwardFeatureSearch(bool toPrint) {
                 currentFeatureSetIDS.pop_back();
             }
         }
+
+        // Found best feature. Setting it's hash to true and adding to set. 
         addedFeatures[featureID] = true;
         currentFeatureSetIDS.push_back(featureID);
         currentFeatureSet.push_back(features.at(currentFeatureSetIDS.back()));
@@ -297,6 +287,7 @@ void forwardFeatureSearch(bool toPrint) {
         cout << "which has an accuracy of " << bestTotalAccuracy << "%" << endl;
     }
     resultingFeatures.push_back(bestFeatures);
+    resultingAccuracies.push_back(bestTotalAccuracy);
 }
 
 void backwardEliminationSearch() {
@@ -394,6 +385,49 @@ void backwardEliminationSearch() {
     cout << "Which has an accuracy of " << bestTotalAccuracy << "%" << endl;
 }
 
+void specialAlgorithm() {
+    unsigned limit;
+    vector<vector <double> > copyOfFeatures(features.begin(), features.end());
+    vector<double> copyOfClassifications(classifications.begin(), classifications.end());
+
+    limit = 2 * log2(features.size());
+    cout << "Beginning Search" << endl << endl;
+    for (unsigned i = 0; i <= limit; i++) {
+        randomDeletionOfInstance();
+        shuffleData();
+        forwardFeatureSearch(false);
+
+        // Output to console.
+        cout << i+1 << ": ";
+        printSet(resultingFeatures.at(i));                      // resultingFeatures is global.
+        cout << "with " << resultingAccuracies.at(i) << "%\n";  // resultingAccuracies is global.
+
+        // Re-setting the features and classifications back to normal
+        features.assign(copyOfFeatures.begin(), copyOfFeatures.end());
+        classifications.assign(copyOfClassifications.begin(), copyOfClassifications.end());
+    }
+}
+
+// randomly deletes 5% of instances of the features vector
+void randomDeletionOfInstance() {
+    unsigned instanceSize = features.at(0).size() - 2;
+    double numberOfDeletions = 0.10 * instanceSize;
+    
+    for (unsigned i = 0; i < numberOfDeletions; i++) {
+        // instanceSize-- because after every deletion to features vector, the
+        // size shrinks by 1. 
+        unsigned indexToDelete = 50; // rand() % instanceSize--;
+
+        // Deleting the instance from the features and classifications vectors
+        for (unsigned j = 0; j < features.size(); j++) {
+            features.at(j).erase(features.at(j).begin() + indexToDelete, 
+                                 features.at(j).begin() + indexToDelete + 1);
+        }
+        classifications.erase(classifications.begin() + indexToDelete,
+                              classifications.begin() + indexToDelete + 1);
+    }
+}
+
 void shuffleData() {
     unordered_map<double, bool> tracker;
     vector<double> idTemp;
@@ -428,7 +462,7 @@ void printDataInfo() {
     cout << "This dataset has " << features.size() << " features (not including ";
     cout << "the class attribute), with " << features.at(0).size() << " instances.\n\n";
     cout << "Please wait while I normalize the data... ";
-    // normalizeData(); 
+    normalizeData(); 
     cout << "Done!\n\n";
 }
 
