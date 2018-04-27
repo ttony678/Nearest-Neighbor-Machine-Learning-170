@@ -1,5 +1,8 @@
 # MachineLearningCS170
 
+Data set information:
+https://archive.ics.uci.edu/ml/datasets/Fertility
+
 Must compile with C++11
 
 Example of input and output:
